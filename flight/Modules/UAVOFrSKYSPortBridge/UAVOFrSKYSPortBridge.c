@@ -59,6 +59,7 @@ static bool frsky_encode_gps_course(uint32_t *value, bool test_presence_only, ui
 static bool frsky_encode_altitude(uint32_t *value, bool test_presence_only, uint32_t arg);
 static bool frsky_encode_vario(uint32_t *value, bool test_presence_only, uint32_t arg);
 static bool frsky_encode_current(uint32_t *value, bool test_presence_only, uint32_t arg);
+static bool frsky_encode_voltage(uint32_t *value, bool test_presence_only, uint32_t arg);
 static bool frsky_encode_cells(uint32_t *value, bool test_presence_only, uint32_t arg);
 static bool frsky_encode_t1(uint32_t *value, bool test_presence_only, uint32_t arg);
 static bool frsky_encode_t2(uint32_t *value, bool test_presence_only, uint32_t arg);
@@ -120,6 +121,7 @@ static const struct frsky_value_item frsky_value_items[] = {
 	{FRSKY_ALT_ID,         100,   frsky_encode_altitude,   0}, // altitude estimate
 	{FRSKY_VARIO_ID,       100,   frsky_encode_vario,      0}, // vertical speed
 	{FRSKY_CURR_ID,        300,   frsky_encode_current,    0}, // battery current
+	{FRSKY_VFAS_ID,        300,   frsky_encode_voltage,    0}, // battery voltage
 	{FRSKY_CELLS_ID,       850,   frsky_encode_cells,      0}, // battery cells 1-2
 	{FRSKY_CELLS_ID,       850,   frsky_encode_cells,      1}, // battery cells 3-4
 	{FRSKY_CELLS_ID,       850,   frsky_encode_cells,      2}, // battery cells 5-6
@@ -142,7 +144,7 @@ static const struct frsky_value_item frsky_value_items[] = {
 	{FRSKY_AIR_SPEED_ID,   100,   frsky_encode_airspeed,   0}, // airspeed
 };
 
-static const uint8_t frsky_sensor_ids[] = {0x1b, 0x0d, 0x34, 0x67};
+static const uint8_t frsky_sensor_ids[] = {0x1b};
 struct frsky_sport_telemetry {
 	struct pios_thread *task;
 	uintptr_t com;
@@ -257,6 +259,28 @@ static bool frsky_encode_current(uint32_t *value, bool test_presence_only, uint3
 	FlightBatteryStateCurrentGet(&current);
 	int32_t current_frsky = (int32_t)(current * 10.0f);
 	*value = (uint32_t) current_frsky;
+
+	return true;
+}
+
+/**
+ * Encode battery voltage value
+ * @param[out] value encoded value
+ * @param[in] test_presence_only true when function should only test for availability of this value
+ * @param[in] arg argument specified in frsky_value_items[]
+ * @returns true when value succesfully encoded or presence test passed
+ */
+static bool frsky_encode_voltage(uint32_t *value, bool test_presence_only, uint32_t arg)
+{
+	if (!frsky->use_current_sensor)
+		return false;
+	if (test_presence_only)
+		return true;
+
+	float voltage = 0;
+	FlightBatteryStateVoltageGet(&voltage);
+	int32_t voltage_frsky = (int32_t)(voltage * 100.0f);
+	*value = (uint32_t) voltage_frsky;
 
 	return true;
 }
